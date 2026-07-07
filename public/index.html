@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Abuse Guard - Interactive HLD & Simulator</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --glow-cyan: rgba(6, 182, 212, 0.4);
+            --glow-purple: rgba(168, 85, 247, 0.4);
+            --glow-green: rgba(16, 185, 129, 0.4);
+            --glow-red: rgba(239, 68, 68, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
+                radial-gradient(at 50% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(17, 24, 39, 0.8) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            background: rgba(11, 15, 25, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--glow-cyan);
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #fff;
+            animation: pulse-glow 3s infinite alternate;
+        }
+
+        .logo-title h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #fff, var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-title p {
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Metrics Grid */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-cyan);
+        }
+
+        .metric-card.threat::before { background: var(--accent-red); }
+        .metric-card.banned::before { background: var(--accent-purple); }
+        .metric-card.active::before { background: var(--accent-green); }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            background: linear-gradient(to right, #fff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Two Column Layout */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Side: HLD Diagram Visualizer */
+        .hld-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2rem;
+            position: relative;
+            min-height: 520px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title span {
+            color: var(--accent-cyan);
+        }
+
+        /* HLD Map canvas container */
+        .hld-canvas {
+            position: relative;
+            flex-grow: 1;
+            height: 380px;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px dashed rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .flow-path {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.06);
+            stroke-width: 3;
+            stroke-dasharray: 6 4;
+        }
+
+        .flow-path-active {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .flow-path-active.active {
+            opacity: 1;
+            animation: dash 1.5s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -40;
+            }
+        }
+
+        /* HLD Nodes */
+        .hld-node {
+            position: absolute;
+            background: rgba(20, 27, 45, 0.9);
+            border: 2px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1rem;
+            width: 160px;
+            text-align: center;
+            z-index: 2;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .hld-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .hld-node.active-evaluation {
+            animation: pulse-node-active 1.5s infinite;
+        }
+
+        @keyframes pulse-node-active {
+            0% { border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
+            50% { border-color: var(--accent-purple); box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); }
+            100% { border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
+        }
+
+        .hld-node.success-glow {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 20px var(--glow-green);
+        }
+
+        .hld-node.fail-glow {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 20px var(--glow-red);
+        }
+
+        .node-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .node-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .node-detail {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Absolute Positions for Nodes */
+        #node-client { top: 150px; left: 30px; }
+        #node-middleware { top: 150px; left: 240px; }
+        #node-redis { top: 40px; left: 450px; }
+        #node-dynamo { top: 260px; left: 450px; }
+        #node-router { top: 150px; left: 660px; }
+
+        /* Request Pulse dot */
+        .request-pulse {
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 15px var(--accent-cyan);
+            display: none;
+        }
+
+        /* Right Side: Simulator Panel */
+        .simulator-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .input-control {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-control:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.1);
+        }
+
+        .checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            padding: 0.25rem 0;
+        }
+
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-cyan);
+            cursor: pointer;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .slider-val {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .simulate-btn {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.2);
+        }
+
+        .simulate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .simulate-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .simulate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Console Output */
+        .console-container {
+            background: rgba(7, 10, 19, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .console-line {
+            line-height: 1.4;
+            opacity: 0.9;
+            animation: line-fade-in 0.3s ease forwards;
+        }
+
+        @keyframes line-fade-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .console-line.info { color: #38bdf8; }
+        .console-line.risk { color: #f59e0b; }
+        .console-line.db { color: #c084fc; }
+        .console-line.redis { color: #f87171; }
+        .console-line.success { color: #34d399; }
+        .console-line.error { color: #ef4444; font-weight: 700; }
+
+        /* Result Splash Overlay */
+        .result-splash {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2rem;
+            z-index: 100;
+            text-align: center;
+            display: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 320px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .result-splash.show {
+            display: block;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .splash-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            animation: bounce-icon 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes bounce-icon {
+            0% { transform: scale(0.3); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .splash-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .splash-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+
+        .splash-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .splash-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* SVG Glow filters */
+        .pulsing-ring {
+            animation: ring-pulse 2s infinite;
+        }
+
+        @keyframes ring-pulse {
+            0% { r: 6px; opacity: 1; }
+            100% { r: 16px; opacity: 0; }
+        }
+
+        /* Tabs */
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.35rem;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            border: 1px solid var(--card-border);
+        }
+
+        .tab-content {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 1.5rem;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Details list */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .detail-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            padding: 1.25rem;
+            border-radius: 16px;
+        }
+
+        .detail-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .code-snippet {
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            display: block;
+            border: 1px solid rgba(255,255,255,0.05);
+            color: #a855f7;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <div class="logo-icon">🛡️</div>
+            <div class="logo-title">
+                <h1>API Abuse Guard</h1>
+                <p>Distributed Abuse Detection HLD</p>
+            </div>
+        </div>
+        <div class="system-status">
+            <div class="status-dot"></div>
+            <span id="backend-status-text">System Active</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Telemetry Metrics -->
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-label">Total Requests Analyzed</div>
+                <div class="metric-value" id="stats-total">1,243,092</div>
+            </div>
+            <div class="metric-card threat">
+                <div class="metric-label">Threat Severity Level</div>
+                <div class="metric-value" id="stats-threat">78/100 (High)</div>
+            </div>
+            <div class="metric-card banned">
+                <div class="metric-label">Banned Devices (FP)</div>
+                <div class="metric-value" id="stats-banned-fp">412</div>
+            </div>
+            <div class="metric-card active">
+                <div class="metric-label">Banned Networks (IP)</div>
+                <div class="metric-value" id="stats-banned-ip">84</div>
+            </div>
+        </div>
+
+        <div class="layout-grid">
+            <!-- Left Side: Node Visualization Map -->
+            <div class="hld-container">
+                <div class="card-header">
+                    <h2 class="card-title">Interactive HLD Flow Map <span>(Motion Canvas)</span></h2>
+                    <div class="metric-label" style="font-size:0.75rem;">Click nodes to inspect system logic</div>
+                </div>
+
+                <div class="hld-canvas" id="canvas">
+                    <!-- SVG Path Connectors -->
+                    <svg class="svg-overlay">
+                        <defs>
+                            <linearGradient id="gradient-cyan-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#06b6d4" />
+                                <stop offset="100%" stop-color="#a855f7" />
+                            </linearGradient>
+                            <linearGradient id="gradient-green" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#10b981" />
+                                <stop offset="100%" stop-color="#34d399" />
+                            </linearGradient>
+                            <linearGradient id="gradient-red" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ef4444" />
+                                <stop offset="100%" stop-color="#f87171" />
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Static Connection Paths -->
+                        <!-- Client to Middleware -->
+                        <path id="path-client-mw" d="M 190 190 Q 215 190 240 190" class="flow-path" />
+                        <!-- Middleware to Redis -->
+                        <path id="path-mw-redis" d="M 320 150 Q 380 90 450 80" class="flow-path" />
+                        <!-- Middleware to DynamoDB -->
+                        <path id="path-mw-dynamo" d="M 320 230 Q 380 290 450 300" class="flow-path" />
+                        <!-- Middleware to Router -->
+                        <path id="path-mw-router" d="M 400 190 Q 530 190 660 190" class="flow-path" />
+
+                        <!-- Active Motion Path Connectors (animated) -->
+                        <path id="active-client-mw" d="M 190 190 Q 215 190 240 190" class="flow-path-active" stroke="url(#gradient-cyan-purple)" />
+                        <path id="active-mw-redis" d="M 320 150 Q 380 90 450 80" class="flow-path-active" stroke="#a855f7" />
+                        <path id="active-mw-dynamo" d="M 320 230 Q 380 290 450 300" class="flow-path-active" stroke="#06b6d4" />
+                        
+                        <!-- Flow Decision routes -->
+                        <path id="active-mw-router-allow" d="M 400 190 Q 530 190 660 190" class="flow-path-active" stroke="url(#gradient-green)" />
+                        <path id="active-mw-router-block" d="M 400 190 Q 530 190 660 190" class="flow-path-active" stroke="url(#gradient-red)" />
+                    </svg>
+
+                    <!-- Request Pulsing Particle -->
+                    <div class="request-pulse" id="pulse"></div>
+
+                    <!-- Node Elements -->
+                    <div class="hld-node" id="node-client" onclick="showNodeInfo('client')">
+                        <div class="node-icon">💻</div>
+                        <div class="node-name">Client request</div>
+                        <div class="node-detail">Headers & IP</div>
+                    </div>
+
+                    <div class="hld-node" id="node-middleware" onclick="showNodeInfo('middleware')">
+                        <div class="node-icon">⚙️</div>
+                        <div class="node-name">Risk Middleware</div>
+                        <div class="node-detail">server.js:L29</div>
+                    </div>
+
+                    <div class="hld-node" id="node-redis" onclick="showNodeInfo('redis')">
+                        <div class="node-icon">⚡</div>
+                        <div class="node-name">Redis Cache</div>
+                        <div class="node-detail">IP / FP BANS</div>
+                    </div>
+
+                    <div class="hld-node" id="node-dynamo" onclick="showNodeInfo('dynamodb')">
+                        <div class="node-icon">💾</div>
+                        <div class="node-name">AWS DynamoDB</div>
+                        <div class="node-detail">Audit Log Store</div>
+                    </div>
+
+                    <div class="hld-node" id="node-router" onclick="showNodeInfo('router')">
+                        <div class="node-icon">🎛️</div>
+                        <div class="node-name">System Router</div>
+                        <div class="node-detail">API Endpoints</div>
+                    </div>
+
+                    <!-- Splash overlay result -->
+                    <div class="result-splash" id="result-splash">
+                        <div class="splash-icon" id="splash-icon">✅</div>
+                        <div class="splash-title" id="splash-title">Request Allowed</div>
+                        <div class="splash-desc" id="splash-desc">Request passed validation with 0 risk points and has been forwarded to the destination.</div>
+                        <button class="splash-btn" onclick="closeSplash()">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Interactive Simulation Console -->
+            <div class="simulator-container">
+                <div class="card-header" style="margin-bottom:0;">
+                    <h2 class="card-title">Threat Simulator Panel</h2>
+                </div>
+
+                <div class="form-group">
+                    <label for="client-ip">Client IP Address</label>
+                    <input type="text" id="client-ip" class="input-control" value="198.51.100.42">
+                </div>
+
+                <div class="form-group">
+                    <label for="req-path">Request Destination Path</label>
+                    <select id="req-path" class="input-control">
+                        <option value="/api/v1/products">/api/v1/products (Safe public route)</option>
+                        <option value="/api/v1/admin/configuration">/api/v1/admin/configuration (Sensitive admin path)</option>
+                        <option value="/api/v1/admin/db-backup">/api/v1/admin/db-backup (Sensitive backup path)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="user-agent">User Agent Header</label>
+                    <select id="user-agent" class="input-control">
+                        <option value="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (Chrome/124.0.0)">Google Chrome Browser (Normal user)</option>
+                        <option value="curl/7.81.0">curl / 7.81.0 CLI Utility (Suspicious scanner)</option>
+                        <option value="Mozilla/5.0 (compatible; SemrushBot/7~bl; +http://semrush.com/bot.html)">SEO Scraping Bot</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="accept-header" checked>
+                    <label for="accept-header" style="cursor:pointer;">Include standard <code>Accept</code> header</label>
+                </div>
+
+                <div class="form-group">
+                    <div class="slider-header">
+                        <label for="velocity-hits">Request Velocity (5-min window)</label>
+                        <span class="slider-val"><span id="velocity-val">1</span> hits</span>
+                    </div>
+                    <input type="range" id="velocity-hits" min="1" max="30" value="1" style="accent-color: var(--accent-cyan);" oninput="document.getElementById('velocity-val').innerText = this.value">
+                </div>
+
+                <button class="simulate-btn" id="simulate-btn" onclick="startSimulation()">
+                    🚀 Run Live HLD Simulation
+                </button>
+            </div>
+        </div>
+
+        <!-- Section 3: Live Terminal & Tabs -->
+        <div class="layout-grid" style="grid-template-columns: 1fr 1fr; margin-top: 1rem;">
+            <!-- Simulation console logs -->
+            <div class="simulator-container" style="gap:1rem;">
+                <div class="card-header" style="margin-bottom:0;">
+                    <h2 class="card-title">🔬 Risk Scoring Terminal Logs</h2>
+                    <span class="metric-label" style="font-family:'JetBrains Mono'; font-size:0.75rem;">live telemetry</span>
+                </div>
+                <div class="console-container" id="console">
+                    <div class="console-line info">[SYSTEM] Click "Run Live HLD Simulation" above to observe risk scoring engine mechanics.</div>
+                </div>
+            </div>
+
+            <!-- Interactive details tab -->
+            <div class="simulator-container" style="gap: 1rem;">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab('tab-middleware')">Middleware Engine</button>
+                    <button class="tab-btn" onclick="switchTab('tab-cache')">Redis Ban Policy</button>
+                    <button class="tab-btn" onclick="switchTab('tab-audit')">DynamoDB Audit</button>
+                </div>
+
+                <div id="tab-middleware" class="tab-content active">
+                    <div class="details-grid">
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-title">⚡ Multi-dimensional Risk Engine</div>
+                            <div class="detail-text">
+                                The inspection middleware processes each incoming request and aggregates risk points dynamically:
+                                <ul>
+                                    <li><strong>Velocity Thresholds:</strong> Hit counter in 5-minute sliding window. Hits > 10 adds <code>30 pts</code>. Hits > 20 adds another <code>40 pts</code>.</li>
+                                    <li><strong>cURL CLI Agent check:</strong> Requests containing <code>curl</code> inside User-Agent header add <code>40 pts</code>.</li>
+                                    <li><strong>Missing Accept header:</strong> Browser-less automated API scrapers usually omit this header, adding <code>20 pts</code>.</li>
+                                    <li><strong>Sensitive Path Matching:</strong> Scopes matching keywords like <code>admin</code> add <code>30 pts</code>.</li>
+                                </ul>
+                                <span class="code-snippet">if (totalRiskScore >= 70) => Quarantines fingerprint</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-cache" class="tab-content">
+                    <div class="details-grid">
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-title">🎯 Distributed Active Caching & Ban Policy</div>
+                            <div class="detail-text">
+                                System locks abusive endpoints inside Redis instantly without database lookups:
+                                <ul style="margin-top:0.5rem; display:flex; flex-direction:column; gap:0.5rem;">
+                                    <li><strong>Fingerprint (FP) Quarantine:</strong> Prevents access for 10 minutes (TTL: 600s). Key design: <code>ban:fp:{sha256}</code></li>
+                                    <li><strong>IP Abuse Tracking:</strong> Increments IP threat score <code>ip:risk:{ip}</code> for every fingerprint block.</li>
+                                    <li><strong>Network Escalation Block:</strong> If an IP address registers 3 banned fingerprints within 15 minutes, the system escalates to an IP-wide ban for 30 minutes. Key: <code>ban:ip:{ip}</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-audit" class="tab-content">
+                    <div class="details-grid">
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-title">📊 DynamoDB Logging Format</div>
+                            <div class="detail-text">
+                                All telemetry is preserved asynchronously in `api-request-logs` table with zero impact on request latency:
+                                <span class="code-snippet" style="color:#06b6d4; font-size:0.7rem; height: 100px; overflow-y:auto; margin-top:0.5rem;">
+Item: {
+  ipAddress: { S: clientIp },
+  timestamp: { S: new Date().toISOString() },
+  fingerprint: { S: fingerprint },
+  hits: { N: hits.toString() },
+  riskScore: { N: riskScore.toString() },
+  path: { S: req.originalUrl },
+  userAgent: { S: userAgent || "unknown" }
+}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Track stats
+        let totalSimulated = 0;
+        let totalHighRisk = 0;
+        let activeBannedFPs = 0;
+        let activeBannedIPs = 0;
+
+        // Fetch real stats from dashboard endpoints if running locally
+        async function fetchDashboardStats() {
+            try {
+                const res = await fetch('/api/dashboard/overview');
+                const bansRes = await fetch('/api/dashboard/banned-ips');
+                
+                if (res.ok && bansRes.ok) {
+                    const data = await res.json();
+                    const bansData = await bansRes.json();
+                    
+                    document.getElementById('stats-total').innerText = data.totalRequests.toLocaleString();
+                    document.getElementById('stats-threat').innerText = data.highRisk > 0 ? `${Math.min(100, 50 + data.highRisk * 2)}/100 (High)` : "0/100 (Safe)";
+                    document.getElementById('stats-banned-fp').innerText = bansData.fingerprintBanCount;
+                    document.getElementById('stats-banned-ip').innerText = bansData.ipBanCount;
+                    
+                    document.getElementById('backend-status-text').innerText = "Live Server Connected";
+                    document.querySelector('.status-dot').style.backgroundColor = 'var(--accent-green)';
+                    document.querySelector('.status-dot').style.boxShadow = '0 0 8px var(--accent-green)';
+                }
+            } catch (err) {
+                console.log("Could not connect to live backend API stats, using local simulation state.");
+                document.getElementById('backend-status-text').innerText = "Simulated Local Session";
+                document.querySelector('.status-dot').style.backgroundColor = 'var(--accent-yellow)';
+                document.querySelector('.status-dot').style.boxShadow = '0 0 8px var(--accent-yellow)';
+                document.querySelector('.system-status').style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                document.querySelector('.system-status').style.color = 'var(--accent-yellow)';
+            }
+        }
+
+        // Initialize connection status
+        fetchDashboardStats();
+        // Periodically refresh stats
+        setInterval(fetchDashboardStats, 10000);
+
+        function switchTab(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function writeConsole(msg, type = 'info') {
+            const container = document.getElementById('console');
+            const date = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `console-line ${type}`;
+            div.innerText = `[${date}] ${msg}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Simulator coordinates for path animations
+        const coords = {
+            client: { x: 110, y: 190 },
+            middleware: { x: 320, y: 190 },
+            redis: { x: 530, y: 80 },
+            dynamodb: { x: 530, y: 300 },
+            router: { x: 740, y: 190 }
+        };
+
+        // Reset visual state
+        function clearNodeVisuals() {
+            document.querySelectorAll('.hld-node').forEach(node => {
+                node.className = 'hld-node';
+            });
+            document.querySelectorAll('.flow-path-active').forEach(path => {
+                path.classList.remove('active');
+            });
+        }
+
+        function closeSplash() {
+            document.getElementById('result-splash').classList.remove('show');
+            clearNodeVisuals();
+        }
+
+        function triggerNodeGlow(nodeId, status) {
+            const node = document.getElementById(nodeId);
+            if (status === 'eval') {
+                node.classList.add('active-evaluation');
+            } else if (status === 'success') {
+                node.classList.remove('active-evaluation');
+                node.classList.add('success-glow');
+            } else if (status === 'fail') {
+                node.classList.remove('active-evaluation');
+                node.classList.add('fail-glow');
+            }
+        }
+
+        // Run simulation animation step-by-step
+        function startSimulation() {
+            const btn = document.getElementById('simulate-btn');
+            btn.disabled = true;
+            closeSplash();
+            clearNodeVisuals();
+
+            const ip = document.getElementById('client-ip').value;
+            const path = document.getElementById('req-path').value;
+            const ua = document.getElementById('user-agent').value;
+            const accept = document.getElementById('accept-header').checked;
+            const hits = parseInt(document.getElementById('velocity-hits').value);
+
+            // Create client fingerprint mock hash
+            const fpRaw = `${ua}|${accept}|${ip}`;
+            const mockFingerprint = Array.from(fpRaw).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0).toString(16).padStart(8, '0');
+
+            writeConsole(`---------------------------------------`);
+            writeConsole(`[INCOMING] Request initialized from ${ip}`, 'info');
+            writeConsole(`Target: GET ${path}`, 'info');
+            writeConsole(`Client Device Fingerprint (SHA-256): ${mockFingerprint}`, 'info');
+
+            // Set up visual particle pulse
+            const pulse = document.getElementById('pulse');
+            pulse.style.display = 'block';
+            pulse.style.left = `${coords.client.x}px`;
+            pulse.style.top = `${coords.client.y}px`;
+
+            // Step 1: Animate Packet from Client to Middleware
+            document.getElementById('active-client-mw').classList.add('active');
+            triggerNodeGlow('node-client', 'success');
+
+            animatePulse(coords.client, coords.middleware, 800, () => {
+                triggerNodeGlow('node-middleware', 'eval');
+                writeConsole(`[MIDDLEWARE] Intercepting request payload...`, 'info');
+
+                // Step 2: Query Redis for bans
+                setTimeout(() => {
+                    writeConsole(`[REDIS] Checking ban keys for device: ban:fp:${mockFingerprint} and network: ban:ip:${ip}...`, 'info');
+                    document.getElementById('active-mw-redis').classList.add('active');
+                    triggerNodeGlow('node-redis', 'eval');
+
+                    animatePulse(coords.middleware, coords.redis, 600, () => {
+                        triggerNodeGlow('node-redis', 'success');
+                        writeConsole(`[REDIS] No active ban keys found. Request proceeds to risk engine.`, 'success');
+
+                        // Step 3: Risk score calculation
+                        setTimeout(() => {
+                            let score = 0;
+                            let breakdown = [];
+
+                            writeConsole(`[ENGINE] Running heuristic risk assessment...`, 'info');
+                            
+                            // Velocity hits rules
+                            if (hits > 20) {
+                                score += 70;
+                                breakdown.push(`Velocity > 20 hits (+70 pts)`);
+                            } else if (hits > 10) {
+                                score += 30;
+                                breakdown.push(`Velocity > 10 hits (+30 pts)`);
+                            }
+
+                            // cURL user agent rules
+                            if (ua.includes('curl')) {
+                                score += 40;
+                                breakdown.push(`User Agent contains 'curl' (+40 pts)`);
+                            }
+
+                            // Missing accept headers
+                            if (!accept) {
+                                score += 20;
+                                breakdown.push(`Missing 'Accept' header (+20 pts)`);
+                            }
+
+                            // Admin route scanner rules
+                            if (path.includes('admin')) {
+                                score += 30;
+                                breakdown.push(`Accessing sensitive admin route (+30 pts)`);
+                            }
+
+                            breakdown.forEach(rule => {
+                                writeConsole(`  ⚠️ Risk Triggered: ${rule}`, 'risk');
+                            });
+
+                            writeConsole(`[ENGINE] Total calculated risk score: ${score}/100`, score >= 70 ? 'redis' : 'success');
+
+                            // Step 4: Write async log to DynamoDB
+                            setTimeout(() => {
+                                document.getElementById('active-mw-dynamo').classList.add('active');
+                                triggerNodeGlow('node-dynamo', 'eval');
+                                writeConsole(`[DYNAMODB] Asynchronously logging audit entry to table 'api-request-logs'...`, 'info');
+
+                                animatePulse(coords.middleware, coords.dynamodb, 600, () => {
+                                    triggerNodeGlow('node-dynamo', 'success');
+                                    writeConsole(`[DYNAMODB] Log entry written successfully.`, 'db');
+
+                                    // Step 5: Final routing action based on score
+                                    setTimeout(() => {
+                                        const isBanned = score >= 70;
+                                        
+                                        if (!isBanned) {
+                                            // Flow Allowed
+                                            document.getElementById('active-mw-router-allow').classList.add('active');
+                                            triggerNodeGlow('node-middleware', 'success');
+                                            triggerNodeGlow('node-router', 'success');
+
+                                            animatePulse(coords.middleware, coords.router, 800, () => {
+                                                writeConsole(`[DECISION] Allowed request. Routing to endpoint: 200 OK`, 'success');
+                                                showResultSplash('allow', score, mockFingerprint, ip);
+                                                btn.disabled = false;
+                                                
+                                                // Increment local metrics
+                                                totalSimulated++;
+                                                document.getElementById('stats-total').innerText = (1243092 + totalSimulated).toLocaleString();
+                                            });
+                                        } else {
+                                            // Flow Blocked/Banned
+                                            document.getElementById('active-mw-router-block').classList.add('active');
+                                            triggerNodeGlow('node-middleware', 'fail');
+                                            triggerNodeGlow('node-router', 'fail');
+
+                                            animatePulse(coords.middleware, coords.router, 800, () => {
+                                                writeConsole(`[DECISION] BLOCKED. Action: Set Redis Ban Key ban:fp:${mockFingerprint} for 10 minutes (429 Device Blocked)`, 'error');
+                                                
+                                                // Escalate to network ban check
+                                                if (hits >= 25) {
+                                                    writeConsole(`[ESCALATION] Multiple violations detected from source IP: ${ip}. Network BANNED (30m IP BAN)`, 'error');
+                                                    activeBannedIPs++;
+                                                    document.getElementById('stats-banned-ip').innerText = (84 + activeBannedIPs);
+                                                    showResultSplash('ip-ban', score, mockFingerprint, ip);
+                                                } else {
+                                                    activeBannedFPs++;
+                                                    document.getElementById('stats-banned-fp').innerText = (412 + activeBannedFPs);
+                                                    showResultSplash('fp-ban', score, mockFingerprint, ip);
+                                                }
+                                                
+                                                totalSimulated++;
+                                                totalHighRisk++;
+                                                document.getElementById('stats-total').innerText = (1243092 + totalSimulated).toLocaleString();
+                                                document.getElementById('stats-threat').innerText = `${78 + Math.min(22, totalHighRisk)}/100 (High)`;
+                                                btn.disabled = false;
+                                            });
+                                        }
+                                    }, 400);
+                                });
+                            }, 400);
+                        }, 500);
+                    });
+                }, 500);
+            });
+        }
+
+        // Custom linear animation for glowing particle
+        function animatePulse(start, end, duration, callback) {
+            const pulse = document.getElementById('pulse');
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Quadratic ease-in-out curve
+                const ease = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                const currentX = start.x + (end.x - start.x) * ease;
+                const currentY = start.y + (end.y - start.y) * ease;
+
+                pulse.style.left = `${currentX}px`;
+                pulse.style.top = `${currentY}px`;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    pulse.style.display = 'none';
+                    if (callback) callback();
+                }
+            }
+
+            pulse.style.display = 'block';
+            requestAnimationFrame(update);
+        }
+
+        function showResultSplash(type, score, fp, ip) {
+            const splash = document.getElementById('result-splash');
+            const icon = document.getElementById('splash-icon');
+            const title = document.getElementById('splash-title');
+            const desc = document.getElementById('splash-desc');
+
+            if (type === 'allow') {
+                icon.innerText = '✅';
+                title.innerText = 'Request Allowed';
+                title.style.color = 'var(--accent-green)';
+                desc.innerHTML = `Risk Score: <strong>${score}/100</strong>.<br>The request is safe and has been successfully routed to the destination API controller (200 OK).`;
+            } else if (type === 'fp-ban') {
+                icon.innerText = '🚫';
+                title.innerText = 'Device Banned';
+                title.style.color = 'var(--accent-red)';
+                desc.innerHTML = `Risk Score: <strong style="color:var(--accent-red);">${score}/100</strong>.<br>Device Fingerprint <code style="font-size:0.75rem;">ban:fp:${fp}</code> is now blacklisted in Redis for 10 minutes.`;
+            } else {
+                icon.innerText = '🚨';
+                title.innerText = 'Network Ban';
+                title.style.color = 'var(--accent-purple)';
+                desc.innerHTML = `Risk Score: <strong style="color:var(--accent-red);">${score}/100</strong>.<br>Multiple threat signatures detected. Netblock <code>ban:ip:${ip}</code> has been banned for 30 minutes.`;
+            }
+
+            splash.style.display = 'block';
+            setTimeout(() => splash.classList.add('show'), 50);
+        }
+    </script>
+</body>
+</html>

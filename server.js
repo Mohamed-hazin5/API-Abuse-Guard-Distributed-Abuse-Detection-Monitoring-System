@@ -22,6 +22,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.static("public"));
+app.use("/assets", express.static("assets"));
 
 /* ======================================================
    MAIN INSPECTION + ADVANCED RISK ENGINE
@@ -32,9 +34,9 @@ app.use(async (req, res, next) => {
         /* ------------------------------------------------
            🚫 Skip system routes (dashboard + health)
         ------------------------------------------------ */
-        const skipPaths = ["/health", "/api/dashboard"];
+        const skipPaths = ["/health", "/api/dashboard", "/assets"];
 
-        if (skipPaths.some(path => req.originalUrl.startsWith(path))) {
+        if (req.originalUrl === "/" || req.originalUrl.startsWith("/index.html") || skipPaths.some(path => req.originalUrl.startsWith(path))) {
             return next();
         }
 
@@ -174,7 +176,7 @@ app.use("/api/dashboard", dashboardRoutes);
    ROOT ROUTE
 ====================================================== */
 app.get("/", (req, res) => {
-    res.send("API Abuse Guard running 🚀");
+    res.sendFile(__dirname + "/public/index.html");
 });
 
 /* ======================================================

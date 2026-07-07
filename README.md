@@ -18,6 +18,17 @@ The system compiles telemetry metrics and attack signatures into a centralized s
 
 ---
 
+## 🕹️ Interactive HLD & Threat Simulator
+
+The system includes an interactive, animated HTML5 High-Level Design (HLD) map and simulator console served directly at the server root:
+
+* **Motion Flow Animations**: Connectors highlight request packets traveling dynamically between nodes (Client → Middleware → Redis → DynamoDB → Router).
+* **Custom Threat Generator**: Test headers, request speeds (velocity), and path vulnerabilities to observe active defensive score adjustments and ban actions (allow 200, block 429, or network ban 403).
+
+To launch the interactive simulator, run the server and navigate to `http://localhost:3000/`.
+
+---
+
 ## 🚀 Key Features
 
 * **⚙️ Advanced Multi-Dimensional Risk Engine**: Dynamically calculates risk scores based on request rate, specific user agents, missing request headers, and sensitive route scanning.
